@@ -14,6 +14,7 @@ const App = () => {
   const [images, setImages] = useState([]);
   const [status, setStatus] = useState("idle");
   const [page, setPage] = useState(1);
+  const [helper, setHelper] = useState("");
 
   const myScroll = useCallback(() => {
     window.scrollTo({
@@ -22,11 +23,15 @@ const App = () => {
     });
   }, []);
   const fetchImages = useCallback(() => {
+    if (!helper) {
+      return;
+    }
     fetch(
-      `https://pixabay.com/api/?q=${myImage}&page=${page}&key=${myKey}de&image_type=photo&orientation=horizontal&per_page=12`
+      `https://pixabay.com/api/?q=${helper}&page=${page}&key=${myKey}de&image_type=photo&orientation=horizontal&per_page=4`
     )
       .then((res) => {
         setMyImage("");
+
         if (res.ok) {
           return res.json().then((data) => data.hits);
         }
@@ -36,6 +41,7 @@ const App = () => {
         setStatus("resolved");
         setImages((images) => [...images, ...response]);
         setPage((page) => page + 1);
+
         if (!response.length) {
           setError(` No image:  ${myImage}`);
           setStatus("rejected");
@@ -51,6 +57,7 @@ const App = () => {
         myScroll();
       });
   }, [
+    helper,
     setStatus,
     setError,
     setImages,
@@ -65,9 +72,12 @@ const App = () => {
     if (!myImage) {
       return;
     }
+    setHelper(myImage);
     setStatus("pending");
-    fetchImages();
-  }, [myImage, fetchImages]);
+    if (helper === myImage) {
+      fetchImages();
+    }
+  }, [myImage, fetchImages, helper]);
 
   const handleFormSubmit = (newMyImage) => {
     if (newMyImage !== myImage) {
@@ -80,7 +90,6 @@ const App = () => {
   };
 
   const setLargeImage = (url) => {
-    // this.setState({ largeImg: url });
     setLargeImg(url);
   };
 
