@@ -5,8 +5,16 @@ import Searchbar from "./components/Searchbar";
 import Button from "./components/Button";
 import ImageGallery from "./components/ImageGallery/ImageGallery";
 import Modal from "./components/Modal";
+import imagesAPI from "./components/services/images-api";
+import ImagesErrorView from "./components/ImagesErrorView";
 
-const myKey = "22042086-a7502aa63bbf9b5978b2310";
+const Status = {
+  IDLE: "idle",
+  PENDING: "pending",
+  RESOLVED: "resolved",
+  REJECTED: "rejected",
+};
+
 const App = () => {
   const [myImage, setMyImage] = useState("");
   const [error, setError] = useState(null);
@@ -14,7 +22,7 @@ const App = () => {
   const [images, setImages] = useState([]);
   const [status, setStatus] = useState("idle");
   const [page, setPage] = useState(1);
-  const [helper, setHelper] = useState("");
+  const [currentName, setHelper] = useState("");
 
   const myScroll = useCallback(() => {
     window.scrollTo({
@@ -23,61 +31,40 @@ const App = () => {
     });
   }, []);
   const fetchImages = useCallback(() => {
-    if (!helper) {
-      return;
-    }
-    fetch(
-      `https://pixabay.com/api/?q=${helper}&page=${page}&key=${myKey}de&image_type=photo&orientation=horizontal&per_page=4`
-    )
-      .then((res) => {
-        setMyImage("");
-
-        if (res.ok) {
-          return res.json().then((data) => data.hits);
-        }
-        // return Promise.reject(throw new Error(` No image:  ${myImage}`));
-      })
+    imagesAPI
+      .fetchImages(currentName, page)
       .then((response) => {
-        setStatus("resolved");
+        setMyImage("");
+        setStatus(Status.RESOLVED);
         setImages((images) => [...images, ...response]);
         setPage((page) => page + 1);
 
         if (!response.length) {
-          setError(` No image:  ${myImage}`);
-          setStatus("rejected");
+          setError(`${myImage}`);
+          setStatus(Status.REJECTED);
         } else {
           setError(null);
         }
       })
       .catch((error) => {
-        setError(` No image:  ${myImage}`);
-        setStatus("rejected");
+        setError(`${myImage}`);
+        setStatus(Status.REJECTED);
       })
       .finally(() => {
         myScroll();
       });
-  }, [
-    helper,
-    setStatus,
-    setError,
-    setImages,
-    setPage,
-    myScroll,
-    setMyImage,
-    myImage,
-    page,
-  ]);
+  }, [currentName, myImage, myScroll, page]);
 
   useEffect(() => {
     if (!myImage) {
       return;
     }
+    setStatus(Status.PENDING);
     setHelper(myImage);
-    setStatus("pending");
-    if (helper === myImage) {
+    if (currentName === myImage) {
       fetchImages();
     }
-  }, [myImage, fetchImages, helper]);
+  }, [myImage, fetchImages, currentName]);
 
   const handleFormSubmit = (newMyImage) => {
     if (newMyImage !== myImage) {
@@ -121,7 +108,9 @@ const App = () => {
       return (
         <div className="App">
           <Searchbar onSubmit={handleFormSubmit} />
-          <h1 style={{ color: "red", textAlign: "center" }}>{error}</h1>
+          <h1 style={{ color: "red", textAlign: "center" }}>
+            <ImagesErrorView message={error} />
+          </h1>
         </div>
       );
 
@@ -134,7 +123,6 @@ const App = () => {
           {largeImg && (
             <Modal
               onClose={() => {
-                // this.setState({ largeImg: null });
                 setLargeImg(null);
               }}
             >
